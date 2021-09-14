@@ -1,0 +1,3 @@
+varA = 55 # varB # 2
+varB = varC # 99 # 12 # 256 # 1000
+varC = 52
