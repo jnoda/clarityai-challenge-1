@@ -4,14 +4,15 @@ import ai.clarity.challenge.Solution;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class SolverTest {
 
@@ -101,6 +102,117 @@ class SolverTest {
 
             // then
             assertTrue(solution.getValue().isEmpty());
+        }
+    }
+
+    @Nested
+    @DisplayName("#constructor")
+    class ConstructorTests {
+        @Test
+        @DisplayName("a null input throws exception")
+        void nullInput() {
+            NullPointerException ex = assertThrows(NullPointerException.class, () -> {
+                new Solver(null, Long::sum, "a");
+            });
+            assertTrue(ex.getMessage().contains("input"));
+        }
+
+        @Test
+        @DisplayName("a null operator throws exception")
+        void nullOperator() {
+            NullPointerException ex = assertThrows(NullPointerException.class, () -> {
+                String string = "a = 1 # 2";
+                new Solver(stringAsInput(string), null, "a");
+            });
+            assertTrue(ex.getMessage().contains("operator"));
+        }
+
+        @Test
+        @DisplayName("a null variable throws exception")
+        void nullVariable() {
+            NullPointerException ex = assertThrows(NullPointerException.class, () -> {
+                String string = "a = 1 # 2";
+                new Solver(stringAsInput(string), Long::sum, null);
+            });
+            assertTrue(ex.getMessage().contains("variable"));
+        }
+
+        @Test
+        @DisplayName("a blank variable throws exception")
+        void blankVariable() {
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> {
+                String string = "a = 1 # 2";
+                new Solver(stringAsInput(string), Long::sum, "  ");
+            });
+            assertTrue(ex.getMessage().contains("variable"));
+        }
+    }
+
+    @Nested
+    @DisplayName("#tryParseLong")
+    class TryParseLongTests {
+        @Test
+        void parseLong() {
+            assertEquals(123L, Solver.tryParseLong("123"));
+        }
+
+        @Test
+        void parseNumberNotLong() {
+            assertNull(Solver.tryParseLong("123.1"));
+        }
+
+        @Test
+        void parseVariable() {
+            assertNull(Solver.tryParseLong("var1"));
+        }
+    }
+
+    @Nested
+    @DisplayName("#parseInput")
+    class ParseInputTests {
+        @Test
+        @DisplayName("throws an exception if a variable is defined more than once")
+        void variableAlreadyDefined() {
+            String string =
+                    "repeatedVar = 1 # 2\n" +
+                            "b = 1\n" +
+                            "repeatedVar = 1 # 3";
+
+            Solver solver = new Solver(stringAsInput(string), Long::sum, "notRelevant");
+
+            ParseException ex = assertThrows(ParseException.class, solver::solve);
+            assertTrue(ex.getMessage().contains("repeatedVar"));
+        }
+
+        @ParameterizedTest
+        @DisplayName("throws an exception if mal-formatted line")
+        @ValueSource(strings = {
+                "a = ",
+                "a 1 # 2",
+                "a = 1 2",
+                " a = 1 # 2",
+                "a = 1 # 2 ",
+                "a = 1 #  2"
+                // there are infinite cases here, so we are just putting some "common" ones
+        })
+        void malformedLine(String string) {
+            Solver solver = new Solver(stringAsInput(string), Long::sum, "notRelevant");
+
+            ParseException ex = assertThrows(ParseException.class, solver::solve);
+            assertTrue(ex.getMessage().contains(string));
+        }
+    }
+
+    @Nested
+    @DisplayName("#solve")
+    class SolveTests {
+        @Test
+        void solveUnknownVariable() {
+            String string = "a = 1 # 2";
+            Solver solver = new Solver(stringAsInput(string), Long::sum, "notAVariable");
+
+            SolveException ex = assertThrows(SolveException.class, solver::solve);
+            assertTrue(ex.getMessage().contains("notAVariable"));
         }
     }
 }
